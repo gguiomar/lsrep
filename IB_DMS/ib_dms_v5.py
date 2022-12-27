@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-plt.rcParams.update({'font.size': 13})
+#plt.rcParams.update({'font.size': 13})
 
 
 # %%
@@ -55,61 +55,63 @@ def get_d_sz2(pi_s,pi_z):
 def normalize_dist(dist):
     return dist/np.sum(dist)
 
+# NOTE: comparison to DM code
+# one main change here is that now I'm also providing
+# initial conditions for rho
 
-def run_IB(n_iters, pi_z_init, n_steps, pi_s):
+def run_IB(rho_zs, pi_z_init, n_steps):
     
     # global variables
     n_states = 4 # definition of s
     n_latent = 2 # definition of z
     n_actions = 2 # definition of a
-    beta = 2
+    beta = 100
 
     # iterative functions
     p_s = 1/n_states - 0.001 # uniform probability for each state - added help of normalization
     pi_z_h = []
-    
-    for n in range(n_iters):
         
-        p_z = np.array([0.5,0.5])
-        p_z = normalize_dist(p_z)
-        pi_z = pi_z_init
-        d_sz = np.zeros((n_states, n_latent))
+    p_z = np.array([0.5,0.5])
+    p_z = normalize_dist(p_z)
+    pi_z = pi_z_init
+    d_sz = np.zeros((n_states, n_latent))
+    Z_sb = np.zeros((n_states))
+    pi_s = np.array([[0.99, 0.01], [0.99, 0.01], [0.01, 0.99], [0.01, 0.99]]).T # target policy
+    #rho_zs = np.zeros((n_latent, n_states))
+
+    for t in range(n_steps):
+
+        d_sz = get_d_sz(pi_s, pi_z)
+
+        # update Z_sb
         Z_sb = np.zeros((n_states))
-        rho_zs = np.zeros((n_latent, n_states))
+        for s in range(n_states):
+            for z in range(n_latent):
+                Z_sb[s] += p_z[z] * np.exp(-beta * d_sz[s,z])
 
-        for t in range(n_steps):
+        # update rho_zs
+        for s in range(n_states):
+            for z in range(n_latent):
+                rho_zs[z,s] = (p_z[z]/Z_sb[s]) * np.exp(-beta * d_sz[s,z])
 
-            d_sz = get_d_sz(pi_s, pi_z)
-
-            # update Z_sb
-            Z_sb = np.zeros((n_states))
+        # update p_z
+        p_z = np.zeros(n_latent)
+        for z in range(n_latent):
             for s in range(n_states):
-                for z in range(n_latent):
-                    Z_sb[s] += p_z[z] * np.exp(-beta * d_sz[s,z])
+                p_z[z] += rho_zs[z,s] * p_s
 
-            # update rho_zs
-            for s in range(n_states):
-                for z in range(n_latent):
-                    rho_zs[z,s] = (p_z[z]/Z_sb[s]) * np.exp(-beta * d_sz[s,z])
-
-            # update p_z
-            p_z = np.zeros(n_latent)
+        # update pi_z
+        pi_z = np.zeros((n_actions, n_latent))
+        for a in range(n_actions):
             for z in range(n_latent):
                 for s in range(n_states):
-                    p_z[z] += rho_zs[z,s] * p_s
+                    pi_z[a,z] +=  p_s * pi_s[a,s] * rho_zs[z,s] / p_z[z]
+    
+        pi_z_h.append(pi_z)
 
-            # update pi_z
-            pi_z = np.zeros((n_actions, n_latent))
-            for a in range(n_actions):
-                for z in range(n_latent):
-                    for s in range(n_states):
-                        pi_z[a,z] +=  p_s * pi_s[a,s] * rho_zs[z,s] / p_z[z]
-        
-            pi_z_h.append(pi_z)
-
-        pi_z_h = np.asarray(pi_z_h)
-        
-        return np.asarray(pi_z_h), rho_zs
+    pi_z_h = np.asarray(pi_z_h)
+    
+    return {'pi_z': pi_z_h[-1], 'pi_z_h': np.asarray(pi_z_h), 'rho':rho_zs}
 
 #%%
 
@@ -263,4 +265,42 @@ for i,e in enumerate(pi_z_inits_ds):
     plt.show()
 
 pi_z_sol = np.asarray(pi_z_sol)
-# %%
+
+
+#%% test on just two initial conditions
+
+## congruent
+rho_o = np.array([[.9, .1], [.9, .1], [.1, .9], [.1, .9]]).T
+pi_z_init_opt = np.array([[0.99, 0.01], [0.01, 0.99]])
+
+sim_data_o = run_IB(rho_o, pi_z_init_opt, 20)
+pi_z_o = sim_data_o['pi_z']
+rho_oc = sim_data_o['rho']
+
+fig, axes = plt.subplots(1,3)
+vmin = 0; vmax = 1.; cmap = 'Greys'
+axes[0].imshow(pi_z_o, vmin=vmin, vmax=vmax, cmap=cmap)
+axes[1].imshow(rho_oc, vmin=vmin, vmax=vmax, cmap=cmap)
+axes[2].imshow(np.dot(rho_oc.T,pi_z_o), vmin=vmin, vmax=vmax, cmap=cmap)
+plt.show()
+
+## incongruent
+rho_c = np.array([[.1, .9], [.1, .9], [.9, .1], [.9, .1]]).T
+pi_z_init_conf = np.array([[0.01, 0.99],[0.99, 0.01]])
+
+sim_data_c = run_IB(rho_c, pi_z_init_conf, 20)
+pi_z_c = sim_data_c['pi_z']
+rho_cc = sim_data_c['rho']
+
+fig, axes = plt.subplots(1,3)
+vmin = 0; vmax = 1.; cmap = 'Greys'
+axes[0].imshow(pi_z_c, vmin=vmin, vmax=vmax, cmap=cmap)
+axes[1].imshow(rho_cc, vmin=vmin, vmax=vmax, cmap=cmap)
+axes[2].imshow(np.dot(rho_cc.T,pi_z_c), vmin=vmin, vmax=vmax, cmap=cmap)
+plt.show()
+
+# NOTE: 
+# gives the same results - main change was the initial conditions for rho
+# change initial conditions for rho and see what happens
+# split the code into the two iteration schemes and test 
+# the same initial conditions

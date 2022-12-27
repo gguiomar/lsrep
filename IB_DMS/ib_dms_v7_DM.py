@@ -71,7 +71,7 @@ def run_information_bottleneck(rho, pi_z_init):
     for t in range(n_steps):
         for s in range(n_state):
             for z in range(n_latent):
-                rho[s,z] = p_z[0, z]*np.exp(-beta*kl(pi_s[s,:], pi_z[z,:]))
+                rho[s,z] = p_z[0, z]*np.exp(-beta*kl(pi_s[s,:], pi_z[z,:])) #check this implementation
             rho[s,:] /= (rho[s,:]).sum()
 
         # compute marginal latents
