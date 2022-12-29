@@ -180,31 +180,59 @@ def plot_rho_pi_comparison(sim_data_opt, sim_data_conf):
     rho_c = sim_data_conf['rho']
     pi_z_o = sim_data_opt['pi_z']
     pi_z_c = sim_data_conf['pi_z']
+    n_steps = sim_data_opt['pi_z_h'].shape[0]
 
     fig, axes = plt.subplots(2,4, figsize = (20,17))
     vmin = 0; vmax = 1.; cmap = 'Greys'
-    
-    axes[0,0].plot(range(n_steps+1), sim_data_opt['error_behave'], 'k')
-    axes[0,1].plot(range(n_steps+1), sim_data_conf['error_behave'], 'k')
-    axes[0,0].set(ylabel = 'KL', xlabel = 'iterations', title = 'Optimal')
-    axes[0,1].set(ylabel = 'KL', xlabel = 'iterations', title = 'Confused')
+
+    axes[0,0].plot(range(n_steps), sim_data_opt['error_behave'], 'k')
+    axes[0,0].set(ylabel = 'KL', xlabel = 'iterations', title = 'Optimal IC', yticks = [0,1], aspect=6)
     axes[0,0].spines['right'].set_visible(False)
     axes[0,0].spines['top'].set_visible(False)
-    axes[0,1].spines['top'].set_visible(False)
-    axes[0,1].spines['right'].set_visible(False)
+    axes[0,1].imshow(sim_data_opt['pi_z'], vmin=vmin, vmax=vmax, cmap=cmap)
+    axes[0,1].set(ylabel = 'action', xlabel = 'latent state (z)', xticks = [0,1], yticks = [0,1], title = 'learned $\pi_z$')
+    axes[0,2].imshow(sim_data_opt['rho'], vmin=vmin, vmax=vmax, cmap=cmap)
+    axes[0,2].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = r'$\rho(z|s)$', aspect = 0.5)
+    axes[0,3].imshow(np.dot(rho_o,pi_z_o), vmin=vmin, vmax=vmax, cmap=cmap)
+    axes[0,3].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = 'reconstructed $\pi_s$', aspect = 0.5)
 
-    axes[1,0].imshow(sim_data_opt['pi_z'], vmin=vmin, vmax=vmax, cmap=cmap)
-    axes[1,0].set(ylabel = 'action', xlabel = 'latent state (z)', xticks = [0,1], yticks = [0,1], title = 'learned $\pi_z$ - optimal IC')
-    axes[1,1].imshow(sim_data_opt['rho'], vmin=vmin, vmax=vmax, cmap=cmap)
-    axes[1,1].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = r'$\rho(z|s)$')
-    axes[1,2].imshow(np.dot(rho_o,pi_z_o), vmin=vmin, vmax=vmax, cmap=cmap)
-    axes[1,2].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = 'reconstructed $\pi_s$')
-
-    axes[2,0].imshow(sim_data_conf['pi_z'], vmin=vmin, vmax=vmax, cmap=cmap)
-    axes[2,0].set(xlabel = 'latent state (z)', ylabel = 'action', xticks = [0,1], yticks = [0,1], title = 'learned $\pi_z$ - confused IC') 
-    axes[2,1].imshow(sim_data_conf['rho'], vmin=vmin, vmax=vmax, cmap=cmap)
-    axes[2,1].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = r'$\rho(z|s)$')
-    axes[2,2].imshow(np.dot(rho_c,pi_z_c), vmin=vmin, vmax=vmax, cmap=cmap)
-    axes[2,2].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = 'reconstructed $\pi_s$')
-
+    axes[1,0].plot(range(n_steps), sim_data_conf['error_behave'], 'k')
+    axes[1,0].set(ylabel = 'KL', xlabel = 'iterations', title = 'Confused IC', yticks = [0,1], aspect=6)
+    axes[1,0].spines['top'].set_visible(False)
+    axes[1,0].spines['right'].set_visible(False)
+    axes[1,1].imshow(sim_data_conf['pi_z'], vmin=vmin, vmax=vmax, cmap=cmap)
+    axes[1,1].set(xlabel = 'latent state (z)', ylabel = 'action', xticks = [0,1], yticks = [0,1], title = 'learned $\pi_z$') 
+    axes[1,2].imshow(sim_data_conf['rho'], vmin=vmin, vmax=vmax, cmap=cmap)
+    axes[1,2].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = r'$\rho(z|s)$', aspect = 0.5)
+    axes[1,3].imshow(np.dot(rho_c,pi_z_c), vmin=vmin, vmax=vmax, cmap=cmap)
+    axes[1,3].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = 'reconstructed $\pi_s$', aspect = 0.5)
+    
     plt.show()
+    
+
+def plot_sim_metrics(sim_data, fig_size):
+    
+    rho = sim_data['rho']
+    pi_z = sim_data['pi_z']
+    n_steps = sim_data['pi_z_h'].shape[0]
+    
+    fig, axes = plt.subplots(1,5, figsize = fig_size)
+    vmin = 0; vmax = 1.; cmap = 'Greys'
+
+    
+    axes[0].imshow(sim_data['pi_z_h'][0], vmin=vmin, vmax=vmax, cmap=cmap)  
+    axes[0].set(ylabel = 'action', xlabel = 'latent state (z)', xticks = [0,1], yticks = [0,1], title = 'initial $\pi_z$')
+    
+    axes[1].plot(range(n_steps), sim_data['error_behave'], 'k')
+    axes[1].set(ylabel = 'KL', xlabel = 'iterations', title = 'Optimal IC', yticks = [0,1], aspect=6)
+    axes[1].spines['right'].set_visible(False)
+    axes[1].spines['top'].set_visible(False)
+    
+    axes[2].imshow(sim_data['pi_z'], vmin=vmin, vmax=vmax, cmap=cmap)
+    axes[2].set(ylabel = 'action', xlabel = 'latent state (z)', xticks = [0,1], yticks = [0,1], title = 'learned $\pi_z$')
+    
+    axes[3].imshow(sim_data['rho'], vmin=vmin, vmax=vmax, cmap=cmap)
+    axes[3].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = r'$\rho(z|s)$', aspect = 0.5)
+
+    axes[4].imshow(np.dot(rho,pi_z), vmin=vmin, vmax=vmax, cmap=cmap)
+    axes[4].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = 'reconstructed $\pi_s$', aspect = 0.5)
