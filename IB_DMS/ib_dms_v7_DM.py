@@ -159,18 +159,28 @@ plt.show()
 
 
 # %%
+from matplotlib import rc
+rc('font', **{'family': 'serif', 'serif': ['Computer Modern']})
+rc('text', usetex=True)
 
-fig, axes = plt.subplots(2,3)
+fig, axes = plt.subplots(2,3, figsize = (20,17))
 vmin = 0; vmax = 1.; cmap = 'Greys'
-axes[0,0].imshow(sim_data_conf['pi_z'], vmin=vmin, vmax=vmax, cmap=cmap)
-axes[0,0].set_title('DC')
-axes[0,1].imshow(sim_data_conf['rho'], vmin=vmin, vmax=vmax, cmap=cmap)
-axes[0,2].imshow(np.dot(rho_c,pi_z_c), vmin=vmin, vmax=vmax, cmap=cmap)
 
-axes[1,0].imshow(sim_data_opt['pi_z'], vmin=vmin, vmax=vmax, cmap=cmap)
-axes[1,0].set_title('OIC')
-axes[1,1].imshow(sim_data_opt['rho'], vmin=vmin, vmax=vmax, cmap=cmap)
-axes[1,2].imshow(np.dot(rho_o,pi_z_o), vmin=vmin, vmax=vmax, cmap=cmap)
+axes[0,0].imshow(sim_data_opt['pi_z'], vmin=vmin, vmax=vmax, cmap=cmap)
+axes[0,0].set(ylabel = 'action', xlabel = 'latent state (z)', xticks = [0,1], yticks = [0,1], title = '$\pi_z$ - non-biased')
+axes[0,1].imshow(sim_data_opt['rho'], vmin=vmin, vmax=vmax, cmap=cmap)
+axes[0,1].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = r'$\rho(z|s)$')
+axes[0,2].imshow(np.dot(rho_o,pi_z_o), vmin=vmin, vmax=vmax, cmap=cmap)
+axes[0,2].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = '$\pi_s$')
+
+axes[1,0].imshow(sim_data_conf['pi_z'], vmin=vmin, vmax=vmax, cmap=cmap)
+axes[1,0].set(xlabel = 'latent state (z)', ylabel = 'action', xticks = [0,1], yticks = [0,1], title = '$\pi_z$ - biased') 
+axes[1,1].imshow(sim_data_conf['rho'], vmin=vmin, vmax=vmax, cmap=cmap)
+axes[1,1].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = r'$\rho(z|s)$')
+axes[1,2].imshow(np.dot(rho_c,pi_z_c), vmin=vmin, vmax=vmax, cmap=cmap)
+axes[1,2].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = '$\pi_s$')
+
+
 plt.show()
 
-# %%
+# %% Running through a set of initial conditions
