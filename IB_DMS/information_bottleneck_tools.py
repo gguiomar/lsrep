@@ -6,21 +6,27 @@ plt.rcParams["text.usetex"] = True
 plt.rcParams["font.family"] = "serif"
 plt.rcParams["font.size"] = "20"
 
-
 # auxiliary functions DM
 
 def kl(p1,p2):
     return (p1*np.log(p1/p2)).sum()
 
+def error2(p_s, pi_behave, pi_s):
+    k = 0.
+    n_state = p_s.shape[0]
+    for s in range(n_state):
+        k += p_s[s] * kl(pi_behave[:,s], pi_s[:,s])
+    return k
+
 def error(p_s, pi_behave, pi_s):
     k = 0.
     n_state = p_s.shape[0]
     for s in range(n_state):
-        k += p_s[s]*kl(pi_behave[s,:], pi_s[s,:])
+        k += p_s[s] * kl(pi_behave[s,:], pi_s[s,:])
     return k
     
 
-## auxiliary function GG
+## auxiliary functions GG
 
 def KL_div(pi_s, pi_z):
     # pi_s[a,s], pi_z[a,z]
@@ -42,29 +48,15 @@ def KL_div(pi_s, pi_z):
 def get_d_sz(pi_s,pi_z):
     # pi_s[a,s], pi_z[a,z]
     
-    n_states = pi_s.shape[1]
+    n_states = pi_s.shape[0]
     n_latent = pi_z.shape[1]
-    n_actions = pi_s.shape[0]
+    n_actions = pi_s.shape[1]
     
     d_sz = np.zeros((n_states, n_latent))
     for s in range(n_states):
         for z in range(n_latent):
             for a in range(n_actions):
-                d_sz[s,z] += pi_z[a, z] * np.log(pi_z[a,z]/pi_s[a,s])
-    return d_sz
-
-def get_d_sz2(pi_s,pi_z):
-    # pi_s[a,s], pi_z[a,z]
-    
-    n_states = pi_s.shape[1]
-    n_latent = pi_z.shape[1]
-    n_actions = pi_s.shape[0]
-    
-    d_sz = np.zeros((n_states, n_latent))
-    for s in range(n_states):
-        for z in range(n_latent):
-            for a in range(n_actions):
-                d_sz[s,z] += pi_s[a, s] * np.log(pi_s[a,s]/pi_z[a,z])
+                d_sz[s,z] += pi_z[z, a] * np.log(pi_z[z,a]/pi_s[s,a])
     return d_sz
 
 def normalize_dist(dist):
@@ -76,40 +68,43 @@ def run_information_bottleneck_DM(rho, pi_z_init, n_steps, beta):
 
     # setup: four environment states, two latent states, two actions
     
-    n_state = 4
+    n_states = 4
     n_latent = 2
-    n_action = 2
+    n_actions = 2
     
     pi_z = pi_z_init
-    pi_behave = np.ones((n_state, n_action))/n_action # behavioral policy induced through latent representation
+    pi_behave = np.ones((n_states, n_actions))/n_actions # behavioral policy induced through latent representation
     pi_s = np.array([[0.99, 0.01], [0.99, 0.01], [0.01, 0.99], [0.01, 0.99]]) # target policy
+    
     p_z = np.ones((1, n_latent))/n_latent
-    p_s = np.ones((n_state, 1))/n_state
-    p_sz = np.ones((n_latent, n_state))/n_latent
+    p_s = np.ones((n_states, 1))/n_states
+    p_sz = np.ones((n_latent, n_states))/n_latent
 
-    error_behave = []
+    error_behave = []    
     error_behave = [error(p_s, pi_behave, pi_s)]
     pi_z_h = [pi_z_init]
+    
     for t in range(n_steps):
-        for s in range(n_state):
+        for s in range(n_states):
             for z in range(n_latent):
                 rho[s,z] = p_z[0, z]*np.exp(-beta*kl(pi_s[s,:], pi_z[z,:])) #check this implementation
             rho[s,:] /= (rho[s,:]).sum()
 
+        print('rho', rho.shape)
         # compute marginal latents
         p_z = (p_s*rho).sum(0).reshape(1, n_latent)
-
+        print('p_z', p_z.shape)
         # compute environment state
         p_sz = (p_s*rho).T
         p_sz /= (p_sz.sum(1)).reshape(n_latent,1)
-
+        print('p_sz', p_sz.shape)
         # compute latent policy
         pi_z = np.dot(p_sz, pi_s)
         pi_z_h.append(pi_z)
-
+        print('pi_z', pi_z.shape)
         # compute behavioral policy
         pi_behave = np.dot(rho, pi_z)
-
+        print('pi_behav', pi_behave.shape)
         # record KL between target policy and behavioral policy
         error_behave.append(error(p_s, pi_behave, pi_s))
 
@@ -126,7 +121,7 @@ def run_information_bottleneck_GG(rho, pi_z_init, n_steps, beta):
     beta = 100
 
     # iterative functions
-    p_s = 1/n_states - 0.001 # uniform probability for each state - added help of normalization
+    p_s = np.ones((n_states, 1))/n_states
     pi_z_h = []
         
     p_z = np.array([0.5,0.5])
@@ -134,9 +129,11 @@ def run_information_bottleneck_GG(rho, pi_z_init, n_steps, beta):
     pi_z = pi_z_init
     d_sz = np.zeros((n_states, n_latent))
     Z_sb = np.zeros((n_states))
-    pi_s = np.array([[0.99, 0.01], [0.99, 0.01], [0.01, 0.99], [0.01, 0.99]]).T # target policy
-    #rho = np.zeros((n_latent, n_states))
+    pi_s = np.array([[0.99, 0.01], [0.99, 0.01], [0.01, 0.99], [0.01, 0.99]]) # target policy
 
+    pi_behave = np.ones((n_states, n_actions))/n_actions # behavioral policy induced through latent representation
+    error_behave = []
+    
     for t in range(n_steps):
 
         d_sz = get_d_sz(pi_s, pi_z)
@@ -156,20 +153,71 @@ def run_information_bottleneck_GG(rho, pi_z_init, n_steps, beta):
         p_z = np.zeros(n_latent)
         for z in range(n_latent):
             for s in range(n_states):
-                p_z[z] += rho[z,s] * p_s
+                p_z[z] += rho[z,s] * p_s[s]
 
         # update pi_z
         pi_z = np.zeros((n_actions, n_latent))
         for a in range(n_actions):
             for z in range(n_latent):
                 for s in range(n_states):
-                    pi_z[a,z] +=  p_s * pi_s[a,s] * rho[z,s] / p_z[z]
+                    pi_z[a,z] +=  p_s[s] * pi_s[s,a] * rho[z,s] / p_z[z]
     
         pi_z_h.append(pi_z)
+        error_behave.append(error(p_s, pi_behave, pi_s))
 
     pi_z_h = np.asarray(pi_z_h)
     
-    return {'pi_z': pi_z_h[-1], 'pi_z_h': np.asarray(pi_z_h), 'rho':rho}
+    return {'pi_z': pi_z_h[-1], 'pi_z_h': np.asarray(pi_z_h), 
+            'rho':rho, 'error_behave' : error_behave}
+
+
+def run_information_bottleneck(rho, pi_z_init, n_steps, beta):
+
+    # recoding the simulation (DM-version) to be dimensionally consistent with notation
+    # setup: four environment states, two latent states, two actions
+    
+    n_states = 4
+    n_latent = 2
+    n_actions = 2
+    
+    pi_z = pi_z_init
+    pi_behave = np.ones((n_actions, n_states))/n_actions # behavioral policy induced through latent representation
+    pi_s = np.array([[0.99, 0.01], [0.99, 0.01], [0.01, 0.99], [0.01, 0.99]]).T # target policy
+    
+    p_z = np.ones((1, n_latent))/n_latent
+    p_s = np.ones((n_states, 1))/n_states
+    p_sz = np.ones((n_states, n_latent))/n_latent
+
+    error_behave = []    
+    error_behave = [error2(p_s, pi_behave, pi_s)]
+    pi_z_h = [pi_z_init]
+    
+    for t in range(n_steps):
+        for s in range(n_states):
+            for z in range(n_latent):
+                rho[z,s] = p_z[0, z]*np.exp(-beta*kl(pi_s[:,s], pi_z[:,z])) #check this implementation
+            rho[:,s] /= (rho[:,s]).sum()
+
+        # compute marginal latents
+        p_z = (p_s*rho).sum(1).reshape(1, n_latent)
+
+        # compute environment state
+        p_sz = (p_s*rho).T
+        p_sz /= (p_sz.sum(1)).reshape(n_latent,1)
+
+        # compute latent policy
+        pi_z = np.dot(p_sz, pi_s)
+        pi_z_h.append(pi_z)
+
+        # compute behavioral policy
+        pi_behave = np.dot(rho, pi_z)
+
+        # record KL between target policy and behavioral policy
+        error_behave.append(error(p_s, pi_behave, pi_s))
+
+    return {'rho':rho, 'pi_z':pi_z, 'p_sz':p_sz, 
+            'pi_behave':pi_behave, 'error_behave':error_behave,
+            'pi_s':pi_s, 'pi_z_h' : np.asarray(pi_z_h)}
 
 
 ## plotting 
@@ -219,20 +267,17 @@ def plot_sim_metrics(sim_data, fig_size):
     fig, axes = plt.subplots(1,5, figsize = fig_size)
     vmin = 0; vmax = 1.; cmap = 'Greys'
 
-    
     axes[0].imshow(sim_data['pi_z_h'][0], vmin=vmin, vmax=vmax, cmap=cmap)  
     axes[0].set(ylabel = 'action', xlabel = 'latent state (z)', xticks = [0,1], yticks = [0,1], title = 'initial $\pi_z$')
-    
     axes[1].plot(range(n_steps), sim_data['error_behave'], 'k')
-    axes[1].set(ylabel = 'KL', xlabel = 'iterations', title = 'Optimal IC', yticks = [0,1], aspect=6)
+    axes[1].set(ylabel = 'KL', xlabel = 'iterations', yticks = [0,1], aspect=6)
     axes[1].spines['right'].set_visible(False)
     axes[1].spines['top'].set_visible(False)
-    
     axes[2].imshow(sim_data['pi_z'], vmin=vmin, vmax=vmax, cmap=cmap)
     axes[2].set(ylabel = 'action', xlabel = 'latent state (z)', xticks = [0,1], yticks = [0,1], title = 'learned $\pi_z$')
-    
     axes[3].imshow(sim_data['rho'], vmin=vmin, vmax=vmax, cmap=cmap)
     axes[3].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = r'$\rho(z|s)$', aspect = 0.5)
-
     axes[4].imshow(np.dot(rho,pi_z), vmin=vmin, vmax=vmax, cmap=cmap)
     axes[4].set(xlabel = 'action', ylabel = 'observed state (s)', xticks = [0,1], yticks = [0,1,2,3], title = 'reconstructed $\pi_s$', aspect = 0.5)
+
+    plt.show()
