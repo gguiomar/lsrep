@@ -21,7 +21,7 @@ def error(p_s, pi_behave, pi_s):
 
 ## information bottleneck functions - two versions
 
-def run_information_bottleneck(rho, pi_z_init, n_steps, beta):
+def run_information_bottleneck(pi_z_init, n_steps, beta):
 
     # setup: four environment states, two latent states, two actions
     
@@ -29,9 +29,9 @@ def run_information_bottleneck(rho, pi_z_init, n_steps, beta):
     n_latent = 2
     n_actions = 2
     
-    
     pi_z = pi_z_init
     
+    rho = np.zeros((n_latent, n_states))
     pi_behave = np.ones((n_actions, n_states))/n_actions # behavioral policy induced throgh latent representation
     pi_s = np.array([[0.99, 0.99, 0.01, 0.01], [0.01, 0.01, 0.99, 0.99]]) # target policy
     p_z = np.ones((1, n_latent))/n_latent
@@ -41,7 +41,7 @@ def run_information_bottleneck(rho, pi_z_init, n_steps, beta):
     error_behave = [error(p_s, pi_behave, pi_s)]
     pi_z_h = []
 
-    for t in range(10):
+    for t in range(n_steps):
         for s in range(n_states):
             for z in range(n_latent):
                 rho[z,s] = p_z[0,z] * np.exp(-beta * kl(pi_s[:,s], pi_z[:,z])) 
@@ -107,9 +107,6 @@ def get_inits():
     n_latent = 2
     
     pi_z_inits_ds = []
-    rho_inits = []
-    rho_opt = np.array([[.9, .1], [.9, .1], [.1, .9], [.1, .9]]).T
-    rho_conf = np.array([[.1, .9], [.1, .9], [.9, .1], [.9, .1]]).T
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.01
@@ -118,7 +115,6 @@ def get_inits():
     pi_z[1,1] = 0.01
     pi_z /= pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
-    rho_inits.append(rho_opt)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.02
@@ -127,7 +123,6 @@ def get_inits():
     pi_z[1,1] = 0.01
     pi_z /= pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
-    rho_inits.append(rho_opt)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.01
@@ -136,7 +131,6 @@ def get_inits():
     pi_z[1,1] = 0.01
     pi_z /= pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
-    rho_inits.append(rho_conf)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.01
@@ -145,7 +139,6 @@ def get_inits():
     pi_z[1,1] = 0.01
     pi_z /= pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
-    rho_inits.append(rho_conf)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.01
@@ -154,7 +147,6 @@ def get_inits():
     pi_z[1,1] = 0.02
     pi_z /= pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
-    rho_inits.append(rho_opt)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.02
@@ -163,7 +155,6 @@ def get_inits():
     pi_z[1,1] = 0.01
     pi_z = pi_z / pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
-    rho_inits.append(rho_conf)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.01
@@ -172,7 +163,6 @@ def get_inits():
     pi_z[1,1] = 0.02
     pi_z /= pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
-    rho_inits.append(rho_opt)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.02
@@ -181,7 +171,6 @@ def get_inits():
     pi_z[1,1] = 0.02
     pi_z /= pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
-    rho_inits.append(rho_opt)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.01
@@ -190,9 +179,8 @@ def get_inits():
     pi_z[1,1] = 0.01
     pi_z /= pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
-    rho_inits.append(rho_conf)
     
-    return pi_z_inits_ds, rho_inits
+    return pi_z_inits_ds
 
 
 def plot_inits(inits):
