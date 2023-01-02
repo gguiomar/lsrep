@@ -10,9 +10,15 @@ plt.rcParams["font.size"] = "20"
 
 # PI_Z INITS
 
-def get_pi_z_inits(n_actions, n_latent):
+def get_inits():
+    
+    n_actions = 2
+    n_latent = 2
     
     pi_z_inits_ds = []
+    rho_inits = []
+    rho_opt = np.array([[.9, .1], [.9, .1], [.1, .9], [.1, .9]]).T
+    rho_conf = np.array([[.1, .9], [.1, .9], [.9, .1], [.9, .1]]).T
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.01
@@ -21,6 +27,7 @@ def get_pi_z_inits(n_actions, n_latent):
     pi_z[1,1] = 0.01
     pi_z = pi_z / pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
+    rho_inits.append(rho_opt)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.02
@@ -29,6 +36,7 @@ def get_pi_z_inits(n_actions, n_latent):
     pi_z[1,1] = 0.01
     pi_z = pi_z / pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
+    rho_inits.append(rho_opt)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.01
@@ -37,6 +45,7 @@ def get_pi_z_inits(n_actions, n_latent):
     pi_z[1,1] = 0.01
     pi_z = pi_z / pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
+    rho_inits.append(rho_conf)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.01
@@ -45,6 +54,7 @@ def get_pi_z_inits(n_actions, n_latent):
     pi_z[1,1] = 0.01
     pi_z = pi_z / pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
+    rho_inits.append(rho_conf)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.01
@@ -53,6 +63,7 @@ def get_pi_z_inits(n_actions, n_latent):
     pi_z[1,1] = 0.02
     pi_z = pi_z / pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
+    rho_inits.append(rho_opt)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.02
@@ -61,6 +72,7 @@ def get_pi_z_inits(n_actions, n_latent):
     pi_z[1,1] = 0.01
     pi_z = pi_z / pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
+    rho_inits.append(rho_conf)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.01
@@ -69,6 +81,7 @@ def get_pi_z_inits(n_actions, n_latent):
     pi_z[1,1] = 0.02
     pi_z = pi_z / pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
+    rho_inits.append(rho_opt)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.02
@@ -77,6 +90,7 @@ def get_pi_z_inits(n_actions, n_latent):
     pi_z[1,1] = 0.02
     pi_z = pi_z / pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
+    rho_inits.append(rho_opt)
 
     pi_z = np.zeros((n_actions, n_latent))
     pi_z[0,0] = 0.01
@@ -85,16 +99,20 @@ def get_pi_z_inits(n_actions, n_latent):
     pi_z[1,1] = 0.01
     pi_z = pi_z / pi_z.sum(axis=0)
     pi_z_inits_ds.append(pi_z)
+    rho_inits.append(rho_conf)
     
-    return pi_z_inits_ds
+    return pi_z_inits_ds, rho_inits
 
 
-def plot_pi_zinits(pi_z_inits_ds):
+def plot_inits(inits):
     
     fig = plt.figure(figsize = [7,7])
     gs = GridSpec(4, 3)
     ax = []
-    for i,e in enumerate(pi_z_inits_ds):
+    vmin = 0
+    vmax = 1
+    cmap = 'Greys'
+    for i,e in enumerate(inits):
         ax.append([])
         ax[i] = fig.add_subplot(gs[i])
         ax[i].imshow(e, cmap, vmin = vmin, vmax = vmax)
