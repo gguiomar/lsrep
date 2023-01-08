@@ -223,13 +223,6 @@ class GaussianMixtureModel:
             mixtures[k] = mix
         assert len(mixtures) == self.K
         return np.array(mixtures).sum(axis=0)
-
-
-def _fpath(*kwargs):
-    """Utility function for naming figures.
-    """
-    name = '_'.join([str(i) for i in kwargs])
-    return '%s.png' % name
  
 # %%
 def is_pos_def(x):
@@ -282,8 +275,6 @@ def plot_data(X, Y, title):
     plt.title(title)
     plt.scatter(X[:, 0], X[:, 1], c=colors)
     plt.show()
-    
-
 #%%
 N_SAMPLES = 500
 n_densities = 2
@@ -299,3 +290,4 @@ plot_data(XX, YY, 'data')
 plot_data(X_sim, Y_sim, 'sampled')
 
 # %%
+
