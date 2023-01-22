@@ -45,3 +45,4 @@ class PlanarTransform(nn.Module):
         self.u.data = (
             self.u + (m_wtu - wtu) * self.w / torch.norm(self.w, p=2, dim=1) ** 2
         )
+

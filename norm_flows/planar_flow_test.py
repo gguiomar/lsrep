@@ -22,7 +22,7 @@ plot_available_distributions()
 
 # Parameters.
 target_distr = "U_1"  # The distribution we want to learn. Choices: ["U_1", "U_2", "U_3", "U_4", "ring"].
-flow_length = 32  # Number of transformations in the flow. 
+flow_length = 10  # Number of transformations in the flow. 
 num_batches = 5000  # How many training batches to train for. These are generated on the fly. 
 batch_size = 128  # This is... wait for it... the size of each batch. 
 lr = 6e-4  # The learning rate for the optimiser.
