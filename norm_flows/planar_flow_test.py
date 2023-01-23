@@ -73,3 +73,5 @@ plot_comparison(model, target_distr, flow_length)
 make_gif_from_train_plots('notebook.gif')
 
 # %%
+
+# %%
