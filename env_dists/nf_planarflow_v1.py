@@ -9,8 +9,6 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 #%%
-
-
 #torch.manual_seed(0)
 
 # Move model on GPU if available
@@ -50,36 +48,43 @@ plt.show()
 #%% 
 
 # Train model
-max_iter = 20000
+max_iter = 30000
 num_samples = 2 * 20
 anneal_iter = 10000
 annealing = True
 show_iter = 2000
 
 
-loss_hist = np.array([])
+def train_flow_model(nfm, max_iter, num_samples, anneal_iter, annealing, show_iter):
 
-optimizer = torch.optim.Adam(nfm.parameters(), lr=1e-3, weight_decay=1e-4)
-for it in tqdm(range(max_iter)):
-    optimizer.zero_grad()
-    if annealing:
-        loss = nfm.reverse_kld(num_samples, beta=np.min([1., 0.01 + it / anneal_iter]))
-    else:
-        loss = nfm.reverse_kld(num_samples)
-    loss.backward()
-    optimizer.step()
-    
-    loss_hist = np.append(loss_hist, loss.to('cpu').data.numpy())
-    
-    # Plot learned distribution
-    if (it + 1) % show_iter == 0:
-        torch.cuda.manual_seed(0)
-        z, _ = nfm.sample(num_samples=2 ** 20)
-        z_np = z.to('cpu').data.numpy()
+    loss_hist = np.array([])
+    optimizer = torch.optim.Adam(nfm.parameters(), lr=1e-3, weight_decay=1e-4)
+    for it in tqdm(range(max_iter)):
+        optimizer.zero_grad()
+        if annealing:
+            loss = nfm.reverse_kld(num_samples, beta=np.min([1., 0.01 + it / anneal_iter]))
+        else:
+            loss = nfm.reverse_kld(num_samples)
+        loss.backward()
+        optimizer.step()
         
-        plt.figure(figsize=(10, 10))
-        plt.hist2d(z_np[:, 0].flatten(), z_np[:, 1].flatten(), (grid_size, grid_size), range=[[-3, 3], [-3, 3]])
-        plt.show()
+        loss_hist = np.append(loss_hist, loss.to('cpu').data.numpy())
+        
+        # Plot learned distribution
+        if (it + 1) % show_iter == 0:
+            torch.cuda.manual_seed(0)
+            z, _ = nfm.sample(num_samples=2 ** 20)
+            z_np = z.to('cpu').data.numpy()
+
+    return loss_hist, z_np, z
+
+loss_hist, z_np, z = train_flow_model(nfm, max_iter, num_samples, anneal_iter, annealing, show_iter)
+
+#%%
+
+# plt.figure(figsize=(10, 10))
+# plt.hist2d(z_np[:, 0].flatten(), z_np[:, 1].flatten(), (grid_size, grid_size), range=[[-3, 3], [-3, 3]])
+# plt.show()
 
 plt.figure(figsize=(10, 10))
 plt.plot(loss_hist, label='loss')
@@ -98,56 +103,59 @@ plt.show()
 
 # %%
 
-num_samples = 1000
-layer_n = 0
-z_test  = [[nfm.flows[layer_n].forward(e)[0].detach().numpy(), 
-            nfm.flows[layer_n].forward(e)[1].detach().numpy()] 
-            for e in np.random.normal(0,10,num_samples)]
+# create a function that passes a 2d gaussian dist through the flow layers
 
-xy = np.zeros((len(z_test),2))
-zz = np.zeros(len(z_test))
+def flow_layer_forward(layer_n, num_samples, grid_size):
+    q0 = nf.distributions.DiagGaussian(2)
+    z, _ = q0.forward(num_samples= num_samples)
 
-for i,e in enumerate(z_test):
-    xy[i,:] = e[0][0]
-    zz[i] = e[1]
+    # run the q0 samples through the flow layers and plot the results
+    xy = np.zeros((len(z),2))
+    for i,e in enumerate(z):
+        xy[i,:] = nfm.flows[layer_n].forward(e)[0].detach().numpy()
 
-#%%
-# plot the 2d hist of xy
-plt.figure(figsize=(10, 10))
-plt.hist2d(xy[:,0], xy[:,1], (grid_size, grid_size), range=[[-3, 3], [-3, 3]])
-plt.show()
+    return xy
 
-#%%
-# plot the 2d scatter of xy
-plt.figure(figsize=(10, 10))
-plt.scatter(xy[:,0], xy[:,1], c=zz)
-plt.show()
+# plot all the layers as a 4x4 grid
+def plot_flow_layers(xy_all):
 
-# %%
-
-# function that plots the 2d hist of xy for a given layer
-##### why is this giving me lines?
-
-def plot_hist_layer(layer_n, num_samples, grid_size):
-    z_test  = [[nfm.flows[layer_n].forward(e)[0].detach().numpy(), 
-                nfm.flows[layer_n].forward(e)[1].detach().numpy()] 
-                for e in np.random.normal(0,10,num_samples)]
-
-    xy = np.zeros((len(z_test),2))
-    zz = np.zeros(len(z_test))
-
-    for i,e in enumerate(z_test):
-        xy[i,:] = e[0][0]
-        zz[i] = e[1]
-
-    plt.figure(figsize=(10, 10))
-    plt.hist2d(xy[:,0], xy[:,1], (grid_size, grid_size), range=[[-3, 3], [-3, 3]])
+    fig, axs = plt.subplots(4, 4, figsize=(15,15))
+    for i in range(4):  
+        for j in range(4):
+            axs[i,j].hist2d(xy_all[i*4+j,:,0], xy_all[i*4+j,:,1], (grid_size, grid_size), range=[[-3, 3], [-3, 3]])
+            axs[i,j].set_title('Layer ' + str(i*4+j))
     plt.show()
 
+def flow_layer_previous(num_samples, n_layers):
+    q0 = nf.distributions.DiagGaussian(2)
+    z, _ = q0.forward(num_samples= num_samples)
+
+    # run the q0 samples through the flow layers and plot the results
+    xy = np.zeros((n_layers, len(z), 2))
+    for k in range(n_layers):
+        if k == 0:
+            z, _ = q0.forward(num_samples = num_samples)
+        else:
+            # change xy to tensor format
+            z = torch.from_numpy(xy[k-1,:,:]).float()
+
+        for i,e in enumerate(z):
+            xy[k, i,:] = nfm.flows[k].forward(e)[0].detach().numpy()
+
+    return xy
+#%%
+
+# save all the layer outputs
 num_samples = 1000
-for layer in range(K):
-    plot_hist_layer(layer, num_samples, grid_size=200)
+xy_all = np.zeros((K, num_samples, 2))
+for i in range(K):
+    xy_all[i,:,:] = flow_layer_forward(i, num_samples, grid_size)
+plot_flow_layers(xy_all)
 
+# %%
+num_samples = 10000
+xy_all = np.zeros((K, num_samples, 2))
+xy_all = flow_layer_previous(num_samples, K)
+plot_flow_layers(xy_all)
 
-
-
+# %%
