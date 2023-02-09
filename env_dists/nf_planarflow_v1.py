@@ -4,7 +4,9 @@
 import torch
 import numpy as np
 import normflows as nf
-
+from sklearn import cluster, datasets, mixture
+from scipy.stats import multivariate_normal
+from sklearn.datasets import make_spd_matrix
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
@@ -48,7 +50,7 @@ plt.show()
 #%% 
 
 # Train model
-max_iter = 30000
+max_iter = 20000
 num_samples = 2 * 20
 anneal_iter = 10000
 annealing = True
@@ -119,10 +121,11 @@ def flow_layer_forward(layer_n, num_samples, grid_size):
 # plot all the layers as a 4x4 grid
 def plot_flow_layers(xy_all):
 
+    grid_size_plot = 100
     fig, axs = plt.subplots(4, 4, figsize=(15,15))
     for i in range(4):  
         for j in range(4):
-            axs[i,j].hist2d(xy_all[i*4+j,:,0], xy_all[i*4+j,:,1], (grid_size, grid_size), range=[[-3, 3], [-3, 3]])
+            axs[i,j].hist2d(xy_all[i*4+j,:,0], xy_all[i*4+j,:,1], (grid_size_plot, grid_size_plot), range=[[-3, 3], [-3, 3]])
             axs[i,j].set_title('Layer ' + str(i*4+j))
     plt.show()
 
@@ -158,4 +161,101 @@ xy_all = np.zeros((K, num_samples, 2))
 xy_all = flow_layer_previous(num_samples, K)
 plot_flow_layers(xy_all)
 
+#%% ----------------------------------------------
+
+# define the number of samples to be drawn
+n_samples = 100000
+
+# define the mean points for each of the systhetic cluster centers
+# spread them out in a 10x10 grid
+
+t_means = []
+for i in range(-5, 5):
+    for j in range(-5, 5):
+        t_means.append([i, j])
+
+#t_means = [[0, 0], [1, 1], [-1, 1], [-1, -1]]
+
+# for each cluster center, create an identity covariance matrix
+
+t_covs = []
+for s in range(len(t_means)):
+    t_covs.append(0.01 * np.identity(2))
+
+# t_covs = []
+# for s in range(len(t_means)):
+#   t_covs.append(make_spd_matrix(2))
+
+X = []
+for mean, cov in zip(t_means,t_covs):
+  x = np.random.multivariate_normal(mean, cov, n_samples)
+  X += list(x)
+  
+X = np.array(X)
+
+# plot the histogram of X
+
+grid_size_plot = 100
+plt.figure(figsize=(10, 10))
+plt.hist2d(X[:, 0].flatten(), X[:, 1].flatten(), (grid_size_plot, grid_size_plot), range=[[-3, 3], [-3, 3]])
+plt.show()
+
+# define a function that generates a grid of gaussian distributions
+#%%
+
+def make_grid_gaussian_mixture(grid_size, n_samples_per_gauss):
+
+    t_means = []
+    for i in range(-int(grid_size/2), int(grid_size/2)):
+        for j in range(-int(grid_size/2), int(grid_size/2)):
+            t_means.append([i, j])
+
+    t_covs = []
+    for s in range(len(t_means)):
+        t_covs.append(0.01 * np.identity(2))
+
+    X = []
+    for mean, cov in zip(t_means,t_covs):
+      x = np.random.multivariate_normal(mean, cov, n_samples_per_gauss)
+      X += list(x)
+      
+    xy = np.array(X)
+
+    return xy
+
+
+grid_size_gauss = 10
+n_samples_per_gauss = 100
+xy_grid = make_grid_gaussian_mixture(grid_size_gauss, n_samples_per_gauss)
+xy_grid.shape
+# plot the histogram of xy_grid
+
+grid_size_plot = 100
+plt.figure(figsize=(10, 10))
+plt.hist2d(xy_grid[:, 0].flatten(), xy_grid[:, 1].flatten(), (grid_size_plot, grid_size_plot), range=[[-3, 3], [-3, 3]])
+plt.show()
+
+
 # %%
+
+# pass the grid of gaussian distributions through the flow layers
+
+#def flow_layer_forward_dist(nfm, n_layers, num_samples, dist):
+    
+z = torch.from_numpy(xy_grid).float()
+xy = np.zeros((K, len(z),2))
+print(z.shape)
+
+for k in range(K):
+    print('layer: ', k)
+    for i,e in enumerate(z):
+        xy[k,i,:] = nfm.flows[k].forward(e)[0].detach().numpy()
+
+#    return xy
+
+
+xy_grid_pass = flow_layer_forward_dist(nfm, K, 10000, xy_grid)
+
+plot_flow_layers(xy_grid_pass)
+
+    # %%
