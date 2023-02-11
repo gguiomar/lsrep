@@ -66,6 +66,7 @@ class GridGauss(BaseDistribution):
         else:
             self.register_buffer("loc", torch.zeros(1, *self.shape))
             self.register_buffer("log_scale", torch.zeros(1, *self.shape))
+
         self.temperature = None  # Temperature parameter for annealed sampling
 
     def forward(self, num_samples=1):
@@ -76,10 +77,10 @@ class GridGauss(BaseDistribution):
             log_scale = self.log_scale
         else:
             log_scale = self.log_scale + np.log(self.temperature)
+
         z = self.loc + torch.exp(log_scale) * eps
-        log_p = -0.5 * self.d * np.log(2 * np.pi) - torch.sum(
-            log_scale + 0.5 * torch.pow(eps, 2), list(range(1, self.n_dim + 1))
-        )
+        log_p = -0.5 * self.d * np.log(2 * np.pi) - torch.sum( log_scale + 0.5 * torch.pow(eps, 2), list(range(1, self.n_dim + 1)))
+
         return z, log_p
 
     def log_prob(self, z):
@@ -96,8 +97,10 @@ class GridGauss(BaseDistribution):
 
 # map this unto the Grid Gaussian Class
 # calculate the log probability
-def make_grid_gaussian_mixture(grid_size, n_samples_per_gauss):
+def make_grid_gaussian_mixture(grid_size, n_samples):
 
+    # define the forward function from this sequence
+    # one pass should be a random sample from the grid gaussian mixture
     t_means = []
     for i in range(-int(grid_size/2), int(grid_size/2)):
         for j in range(-int(grid_size/2), int(grid_size/2)):
@@ -109,7 +112,7 @@ def make_grid_gaussian_mixture(grid_size, n_samples_per_gauss):
 
     X = []
     for mean, cov in zip(t_means,t_covs):
-      x = np.random.multivariate_normal(mean, cov, n_samples_per_gauss)
+      x = np.random.multivariate_normal(mean, cov, n_samples)
       X += list(x)
       
     xy = np.array(X)

@@ -257,7 +257,7 @@ plot_flow_layers(xy_grid_pass)
 grid_size_gauss = 10
 n_samples_per_gauss = 100
 grid_gauss_dist = make_grid_gaussian_mixture(grid_size_gauss, n_samples_per_gauss)
-target = torch.from_numpy(grid_gauss_dist).float()
+target = torch.from_numpy(grid_gauss_dist).float() # needs to be defined as a torch class
 
 # define the base distribution (q0)
 q0 = nf.distributions.DiagGaussian(2) # 2 dimensional symmetrical gaussian
@@ -270,6 +270,7 @@ num_samples = 2 * 20
 anneal_iter = 10000
 annealing = True
 show_iter = 2000
+
 
 loss_hist, z_np, z = train_flow_model(nfm, max_iter, num_samples, anneal_iter, annealing, show_iter)
 
