@@ -139,7 +139,7 @@ plt.show()
 max_iter = 20000
 num_samples = 2 * 20
 anneal_iter = 10000
-annealing = True
+annealing = True # what is annealing?
 show_iter = 2000
 
 loss_hist, z_np, z = train_flow_model(nfm, max_iter, num_samples, anneal_iter, annealing, show_iter)

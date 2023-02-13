@@ -96,7 +96,7 @@ class GridGauss(BaseDistribution):
 
 
 # map this unto the Grid Gaussian Class
-# calculate the log probability
+# calculate the log probability - need to write down the expression
 def make_grid_gaussian_mixture(grid_size, n_samples):
 
     # define the forward function from this sequence
@@ -118,3 +118,8 @@ def make_grid_gaussian_mixture(grid_size, n_samples):
     xy = np.array(X)
 
     return xy
+
+
+# write a grid gaussian mixture class using the base distribution class above
+class GridGaussianMixture(BaseDistribution):
+
