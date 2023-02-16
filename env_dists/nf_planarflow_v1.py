@@ -186,7 +186,6 @@ for i in range(-5, 5):
     for j in range(-5, 5):
         t_means.append([i, j])
 
-#t_means = [[0, 0], [1, 1], [-1, 1], [-1, -1]]
 
 # for each cluster center, create an identity covariance matrix
 
@@ -214,9 +213,6 @@ plt.show()
 
 # define a function that generates a grid of gaussian distributions
 #%%
-
-
-
 
 grid_size_gauss = 10
 n_samples_per_gauss = 100
@@ -251,7 +247,7 @@ xy_grid_pass = flow_layer_forward_dist(nfm, K, 10000, xy_grid)
 
 plot_flow_layers(xy_grid_pass)
 
-# %%
+# %% - DEVELOP THE GRID GAUSSIAN DISTRIBUTION
 
 # learn a grid of gaussian distributions from a single gaussian
 grid_size_gauss = 10
