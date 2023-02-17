@@ -77,6 +77,7 @@ def plot_flow_layers(xy_all):
                 axs[i,j].axis('off')
     plt.show()
 
+
 def flow_layer_pass_through(base, nfm, num_samples, n_layers):
 
     xy = np.zeros((n_layers, num_samples, 2))
@@ -120,13 +121,23 @@ def grid_gaussian_params(N):
 
     return means, weights
 
-
 def plot_learned_model(nfm, num_samples):
     grid_size = 100
     z, _ = nfm.sample(num_samples=2**20)
     z_np = z.to('cpu').data.numpy()
     plt.hist2d(z_np[:, 0].flatten(), z_np[:, 1].flatten(), (grid_size, grid_size), range=[[-3, 3], [-3, 3]])
     plt.show()
+
+
+def grid_flow_pass_through(grid_gauss, nfm, num_samples, K):
+    
+    z, _ = grid_gauss.forward(num_samples = num_samples)
+
+    xy_all = np.zeros((K, num_samples, 2))
+    for k in range(K):
+        for i,e in enumerate(z):
+            xy_all[k,i,:] = nfm.flows[k].forward(e)[0].detach().numpy()
+    return xy_all
 
 #%%
 
@@ -251,14 +262,6 @@ plot_flow_layers(xy_all) # use a base distribution as input
 # pass a grid_gaussian through each flow layer
 # plot the output of each flow layer
 
-def grid_flow_pass_through(grid_gauss, nfm, num_samples, K):
-    xy_all = []
-    for i in range(K):
-        xy = flow_layer_pass_through(grid_gauss, nfm, num_samples, i)
-        xy_all.append(xy)
-    return xy_all
-
-
 means, weights =  grid_gaussian_params(4)
 num_dim  = 2 # number of dimensions
 num_modes = means.shape[0]
@@ -270,9 +273,65 @@ plot_gm_dist(grid_gaussian_plot, 100000)
 
 num_samples = 10000
 flow_grid = grid_flow_pass_through(grid_gaussian_plot, nfm, num_samples, K)
-plot_flow_layers(xy_all) 
+plot_flow_layers(flow_grid) 
 
 
 # %%
 
 # %%
+
+# make a flow layer analysis class
+
+class FlowLayerAnalysis():
+    def __init__(self, base, target, nfm, num_samples, K):
+        self.base = base
+        self.target = target
+        self.nfm = nfm
+        self.num_samples = num_samples
+        self.K = K
+        self.flow_grid = self.grid_flow_pass_through()
+        self.xy_all = self.flow_layer_pass_through()
+        
+    def grid_gaussian_params(self, num_modes):
+        means = np.zeros((num_modes, 2))
+        weights = np.ones(num_modes) / num_modes
+        for i in range(num_modes):
+            means[i,0] = np.cos(2 * np.pi * i / num_modes)
+            means[i,1] = np.sin(2 * np.pi * i / num_modes)
+        return means, weights
+    
+    def grid_gaussian(self, num_modes):
+        means, weights = self.grid_gaussian_params(num_modes)
+        num_dim  = 2 # number of dimensions
+        num_modes = means.shape[0]
+        scale_factor = 0.1
+        covs = scale_factor * np.ones((num_modes, num_dim))
+        grid_gaussian = nf.distributions.GaussianMixture(n_modes = num_modes, dim = num_dim, loc=means, scale = covs, weights=weights, trainable=False)
+        return grid_gaussian
+    
+    def grid_flow_pass_through(self):
+        num_samples = self.num_samples
+        base = self.base
+        nfm = self.nfm
+        K = self.K
+        xy_all = np.zeros((K, num_samples, 2))
+        for k in range(K):
+            for i,e in enumerate(base):
+                xy_all[k,i,:] = nfm.flows[k].forward(e)[0].detach().numpy()
+        return xy_all
+    
+    def flow_layer_pass_through(self):
+        num_samples = self.num_samples
+        base = self.base
+        nfm = self.nfm
+        K = self.K
+        xy_all = np.zeros((K, num_samples, 2))
+        for k in range(K):
+            for i,e in enumerate(base):
+                xy_all[k,i,:] = nfm.flows[k].forward(e)[0].detach().numpy()
+        return xy_all
+    
+    def plot_flow_layers(self):
+        xy_all = self.xy_all
+        K = self.K
+        fig, axs = plt.subplots(3,
