@@ -98,7 +98,7 @@ def plot_gm_dist(p, num_samples):
     grid_size = 100
     z, _ = p.forward(num_samples)
     z = z.detach().numpy()
-    plt.hist2d(z[:, 0].flatten(), z[:, 1].flatten(), (grid_size, grid_size), range=[[-3,3], [-3, 3]], cmap='viridis')
+    plt.hist2d(z[:, 0].flatten(), z[:, 1].flatten(), (grid_size, grid_size), range=[[-3,3], [-3, 3]])
     plt.show()
 
 def plot_twomoon_dist(p, num_samples):
@@ -168,7 +168,8 @@ covs = scale_factor * np.ones((num_modes, num_dim))
 two_gaussians = nf.distributions.GaussianMixture(n_modes = num_modes, dim = num_dim, loc=means, scale = covs, weights=weights, trainable=False)
 #plot_gm_dist(two_gaussians, 100000)
 
-#%% n gaussian distr
+
+#%% - 4 gausssians to mimmick p(s,a)
 
 means = torch.tensor([[-2, -2], [2, 2], [0, 2], [-0,-2]], dtype=torch.float)
 weights = torch.tensor([0.25, 0.25, 0.25, 0.25], dtype=torch.float)
@@ -215,7 +216,7 @@ print(flows)
 
 base = grid_gaussian
 target = three_gaussians
-plot_gm_dist(q0, 10000)
+plot_gm_dist(base, 10000)
 plot_gm_dist(target, 10000)
 
 
@@ -247,12 +248,11 @@ loss_hist, nfm = train_flow_model(nfm, max_iter, num_samples, anneal_iter, annea
 plot_learned_model(nfm, 10000)
 
 
-#%% TODO: define an analysis class for the flow network
-# 1. plot each flow independently
-# 2. plot the sequence of flows starting from the base to the target
+#%% 
 
 num_samples = 10000
-base = grid_gaussian
+#base = grid_gaussian
+base = nf.distributions.DiagGaussian(2)
 xy_all = flow_layer_pass_through(base, nfm, num_samples, K)
 
 plot_flow_layers(xy_all) # use a base distribution as input
@@ -271,9 +271,9 @@ covs = scale_factor * np.ones((num_modes, num_dim))
 grid_gaussian_plot = nf.distributions.GaussianMixture(n_modes = num_modes, dim = num_dim, loc=means, scale = covs, weights=weights, trainable=False)
 plot_gm_dist(grid_gaussian_plot, 100000)
 
-num_samples = 10000
+num_samples = 1000
 flow_grid = grid_flow_pass_through(grid_gaussian_plot, nfm, num_samples, K)
-plot_flow_layers(flow_grid) 
+plot_flow_layers(flow_grid)
 
 
 # %%
@@ -282,56 +282,19 @@ plot_flow_layers(flow_grid)
 
 # make a flow layer analysis class
 
-class FlowLayerAnalysis():
-    def __init__(self, base, target, nfm, num_samples, K):
-        self.base = base
-        self.target = target
-        self.nfm = nfm
-        self.num_samples = num_samples
-        self.K = K
-        self.flow_grid = self.grid_flow_pass_through()
-        self.xy_all = self.flow_layer_pass_through()
-        
-    def grid_gaussian_params(self, num_modes):
-        means = np.zeros((num_modes, 2))
-        weights = np.ones(num_modes) / num_modes
-        for i in range(num_modes):
-            means[i,0] = np.cos(2 * np.pi * i / num_modes)
-            means[i,1] = np.sin(2 * np.pi * i / num_modes)
-        return means, weights
-    
-    def grid_gaussian(self, num_modes):
-        means, weights = self.grid_gaussian_params(num_modes)
-        num_dim  = 2 # number of dimensions
-        num_modes = means.shape[0]
-        scale_factor = 0.1
-        covs = scale_factor * np.ones((num_modes, num_dim))
-        grid_gaussian = nf.distributions.GaussianMixture(n_modes = num_modes, dim = num_dim, loc=means, scale = covs, weights=weights, trainable=False)
-        return grid_gaussian
-    
-    def grid_flow_pass_through(self):
-        num_samples = self.num_samples
-        base = self.base
-        nfm = self.nfm
-        K = self.K
-        xy_all = np.zeros((K, num_samples, 2))
-        for k in range(K):
-            for i,e in enumerate(base):
-                xy_all[k,i,:] = nfm.flows[k].forward(e)[0].detach().numpy()
-        return xy_all
-    
-    def flow_layer_pass_through(self):
-        num_samples = self.num_samples
-        base = self.base
-        nfm = self.nfm
-        K = self.K
-        xy_all = np.zeros((K, num_samples, 2))
-        for k in range(K):
-            for i,e in enumerate(base):
-                xy_all[k,i,:] = nfm.flows[k].forward(e)[0].detach().numpy()
-        return xy_all
-    
-    def plot_flow_layers(self):
-        xy_all = self.xy_all
-        K = self.K
-        fig, axs = plt.subplots(3,
+# create a folder to save the images with a current date and time timestamp
+import datetime
+
+now = datetime.datetime.now()
+timestamp = now.strftime("%Y-%m-%d-%H-%M")
+print(timestamp)
+
+# create a folder to save the images - use the timestamp as the folder name
+import os
+path = os.getcwd()
+path = os.path.join(path, timestamp)
+
+if not os.path.exists(path):
+    os.makedirs(path)
+
+
