@@ -48,7 +48,6 @@ class ReplayBuffer:
         next_obs: np.ndarray, 
         done: bool,
     ):
-        #print(obs)
         """Store the transition in buffer."""
         self.obs_buf[self.ptr] = obs
         self.next_obs_buf[self.ptr] = next_obs
@@ -277,7 +276,7 @@ class SACAgent:
             )[0].detach().cpu().numpy()
             
         self.transition = [state, selected_action]
-        #print('transition AA: ', self.transition)
+        
         
         return selected_action
     
@@ -289,7 +288,7 @@ class SACAgent:
 
         if not self.is_test:
             self.transition += [reward, next_state, done]
-            #print('transition: ', self.transition)
+            
             self.memory.store(*self.transition)
     
         return next_state, reward, done
@@ -375,26 +374,25 @@ class SACAgent:
         print('initial state: ', state)
 
         actor_losses, qf_losses, vf_losses, alpha_losses = [], [], [], []
-        scores = []
+        self.scores = []
         score = 0
         
         for self.total_step in range(1, num_frames + 1):
             action = self.select_action(state)
             next_state, reward, done = self.step(action)
             
-            print(action, next_state, reward, done)
+            #print(action, next_state, reward, done)
 
             state = next_state
             score += reward
 
-            #print('score', score)
-
-            
+            #print(score, reward)
 
             # if episode ends
             if done:
                 state = self.env.reset()
-                scores.append(score)
+                #
+                # self.scores.append(score)
                 score = 0
 
             # if training is ready
@@ -402,6 +400,7 @@ class SACAgent:
                 len(self.memory) >= self.batch_size 
                 and self.total_step > self.initial_random_steps
             ):
+                self.scores.append(score)
                 losses = self.update_model()
                 actor_losses.append(losses[0])
                 qf_losses.append(losses[1])
@@ -412,7 +411,7 @@ class SACAgent:
             if self.total_step % plotting_interval == 0:
                 self._plot(
                     self.total_step,
-                    scores, 
+                    self.scores, 
                     actor_losses, 
                     qf_losses, 
                     vf_losses, 
@@ -435,7 +434,6 @@ class SACAgent:
             frames.append(self.env.render(mode="rgb_array"))
             action = self.select_action(state)
             next_state, reward, done = self.step(action)
-
             state = next_state
             score += reward
         
@@ -535,4 +533,32 @@ agent = SACAgent(
 #%%
 
 agent.train(num_frames)
+
 # %%
+
+# testing the agent for one episode
+frames = agent.test()
+
+#%%
+
+from matplotlib import animation
+from JSAnimation.IPython_display import display_animation
+from IPython.display import display
+
+
+def display_frames_as_gif(frames):
+    """Displays a list of frames as a gif, with controls."""
+    patch = plt.imshow(frames[0])
+    plt.axis('off')
+
+    def animate(i):
+        patch.set_data(frames[i])
+
+    anim = animation.FuncAnimation(
+        plt.gcf(), animate, frames = len(frames), interval=50
+    )
+    display(display_animation(anim, default_mode='loop'))
+
+
+# display 
+display_frames_as_gif(frames)
