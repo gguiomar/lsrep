@@ -135,10 +135,10 @@ def plot_flow_layers(xy_all, range_v):
 def plot_flow_layers_save(xy_all, range_v, filename, path):
 
     grid_size_plot = 100
-    #range_v = [[-3,3], [-3, 3]]
 
     # number of plots
     n_plots = xy_all.shape[0]
+
     # if the number of plots is not a square number, add extra plots
     n_rows = int(np.ceil(np.sqrt(n_plots)))
     n_cols = int(np.ceil(n_plots/n_rows))
@@ -158,6 +158,30 @@ def plot_flow_layers_save(xy_all, range_v, filename, path):
     plt.show()
    
 
+def plot_2layer_flow_save(xy_all, range_v, path):
+
+    grid_size_plot = 100
+
+    # number of plots
+    n_plots = xy_all.shape[0]
+    
+    # if the number of plots is not a square number, add extra plots
+    n_rows = 1
+    n_cols = 2
+
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(15,7))
+    for i in range(n_rows):
+        for j in range(n_cols):
+            axs[j].hist2d(xy_all[i*n_cols + j,:,0].flatten(), xy_all[i*n_cols + j,:,1].flatten(), (grid_size_plot, grid_size_plot), range=range_v)
+            axs[j].set_title('Layer ' + str(i*n_cols + j))
+            axs[j].set_xlim(range_v[0])
+            axs[j].set_ylim(range_v[1])
+    
+    if path: # save figure with file name
+        fig.savefig(path + '/2layer_flow.png')
+    plt.show()
+
+        
 
 def flow_layer_pass_through(base, nfm, num_samples, n_layers):
 
@@ -223,10 +247,22 @@ def grid_gaussian_params(N):
 
     return means, weights
 
-def generate_psa_dist(scale_factor):
+def generate_psa_dist(scale_factor, coords):
 
-    means = torch.tensor([[-2, -2], [2, 2], [0, 2], [-0,-2]], dtype=torch.float)
-    weights = torch.tensor([0.25, 0.25, 0.25, 0.25], dtype=torch.float)
+    means = torch.tensor(coords, dtype=torch.float)
+    weights = torch.tensor([1/len(means)] * len(means), dtype=torch.float)
+    num_dim  = 2 # number of dimensions
+    num_modes = means.shape[0]
+    covs = scale_factor * np.ones((num_modes, num_dim))
+    psa_dist = nf.distributions.GaussianMixture(n_modes = num_modes, dim = num_dim, loc=means, scale = covs, weights=weights, trainable=False)
+
+    return psa_dist
+
+def generate_line_dist(scale_factor):
+
+    coords = [[-3,0], [-2.5,0], [-2,0], [-1.5,0], [-1,0], [-0.5,0], [0,0], [0.5,0], [1,0], [1.5,0], [2,0], [2.5,0], [3,0]]
+    means = torch.tensor(coords, dtype=torch.float)
+    weights = torch.tensor([1/len(means)] * len(means), dtype=torch.float)
     num_dim  = 2 # number of dimensions
     num_modes = means.shape[0]
     covs = scale_factor * np.ones((num_modes, num_dim))
@@ -265,23 +301,23 @@ def generate_2gauss_dist(scale_factor):
 
 # generate base, target distributions
 
-def generate_base_and_target(base_name, target_name, n_grid = 3, scale_factor = 0.3):
+def generate_base_and_target(base_name, target_name, scale_factor, coords, n_grid = 3, scale_factor_psa = 0.3):
 
     if base_name == 'grid':
         base = generate_grid_dist(n_grid, scale_factor)
-    elif base_name == 'psa':
-        base = generate_psa_dist(scale_factor)
     elif base_name == 'twomoon':
         base = generate_twomoon_dist()
     elif base_name == '2gauss':
         base = generate_2gauss_dist(scale_factor)
     elif base_name == 'gauss':
         base = nf.distributions.DiagGaussian(2)
+    elif base_name == 'line':
+        base = generate_line_dist(scale_factor)
 
     if target_name == 'grid':
         target = generate_grid_dist(n_grid, scale_factor)
     elif target_name == 'psa':
-        target = generate_psa_dist(scale_factor)
+        target = generate_psa_dist(scale_factor_psa, coords)
     elif target_name == 'twomoon':
         target = generate_twomoon_dist()
     elif target_name == '2gauss':

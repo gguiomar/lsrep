@@ -12,7 +12,6 @@ import os
 import time
 from utils import *
 
-#%%
 
 ###################### MODEL STARTS HERE ######################
 # Move model on GPU if available
@@ -20,14 +19,23 @@ from utils import *
 enable_cuda = True
 device = torch.device('cuda' if torch.cuda.is_available() and enable_cuda else 'cpu')
 
-K = 12
+K = 2
 flows = []
+## K planar flows
 for i in range(K):
     flows += [nf.flows.Planar((2,))]
 
-print(flows)
+# # K planar flows where the middle 5 layers are radial flows
+# middle_layers = [K/2-1, K/2, K/2+1]
+# for i in range(K):
+#     if i in middle_layers:
+#         flows += [nf.flows.Radial((2,))]
+#     else:
+#         flows += [nf.flows.Planar((2,))]
 
-base, target = generate_base_and_target('grid', 'psa', n_grid = 4, scale_factor = 0.3)
+print(flows)
+coords_psa = [[-3, -1], [-2.5, -1], [-2, -1], [-1.5, -1], [-1, -1], [-0.5, -1], [0.5,1], [1, 1], [1.5, 1], [2, 1], [2.5, 1], [3, 1]]
+base, target = generate_base_and_target('line', 'psa', n_grid = 4, scale_factor= 0.2, coords = coords_psa, scale_factor_psa=0.2)
 plot_gm_dist(base, 10000)
 plot_gm_dist(target, 10000)
 
@@ -44,11 +52,11 @@ plt.hist2d(z_np[:, 0].flatten(), z_np[:, 1].flatten(), (grid_size, grid_size), r
 plt.show()
 
 # Train model
-max_iter = 5000
-num_samples = 1000
-anneal_iter = 1000
+max_iter = 7000
+num_samples = 100
+anneal_iter = 100
 annealing = True # what is annealing?
-show_iter = 100
+show_iter = 1000
 plotting = False
 make_gif = True
 save_fig = True
@@ -58,25 +66,20 @@ save_fig = True
 loss_hist, nfm, path, nfm_h = train_flow_model(nfm, max_iter, num_samples, anneal_iter, 
                                   annealing, show_iter, plotting, save_fig)
 
+num_samples = 3000
+xy_all = flow_layer_pass_through(base, nfm, num_samples, K) #using same base distribution as sim
+range_v = [[-4, 4], [-4, 4]]
+filename = 'pass_through_layers'
+
+if K > 2:
+    plot_flow_layers_save(xy_all, range_v, filename, path)
+else:
+    plot_2layer_flow_save(xy_all, range_v, path)
+
+
 #%%
 
-plot_learned_model(nfm_h[-1], 10000)
-
-
-#%% 
-
-num_samples = 10000
-base = nf.distributions.DiagGaussian(2)
-xy_all = flow_layer_pass_through(base, nfm, num_samples, K)
-#path = 'plots/20230220-134258/'
-range_v = [[-3, 3], [-3, 3]]
-filename = 'pass_through_gaussian'
-
-plot_flow_layers_save(xy_all, range_v, filename, False)
-
-#%% check the flow in each layer passed through a grid of gaussians
-
-num_samples = 10000
+#num_samples = 10000
 means, weights =  grid_gaussian_params(4)
 num_dim  = 2 # number of dimensions
 num_modes = means.shape[0]
@@ -118,30 +121,5 @@ for nfm_f in nfm_h[-5:-1]:
 folder_name = 'plots/20230220-183156/' # need to automate folder name extraction
 gif_name = 'gif_test2.gif'
 make_gif_from_folder(folder_name, gif_name)
-
-# %% clustering test
-
-import matplotlib.pyplot as plt
-import numpy
-import scipy.cluster.hierarchy as hcluster
-
-# generate 3 clusters of each around 100 points and one orphan point
-
-N = 100
-data = numpy.random.randn(3*N,2)
-data[:N] += 5
-data[-N:] += 5
-
-# clustering
-thresh = 2
-clusters = hcluster.fclusterdata(data, thresh, criterion="distance")
-n_clusters = len(set(clusters))
-
-# plotting
-plt.scatter(*numpy.transpose(data), c=clusters)
-plt.axis("equal")
-title = "threshold: %f, number of clusters: %d" % (thresh, len(set(clusters)))
-plt.title(title)
-plt.show()
 
 # %%
